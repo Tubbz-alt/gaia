@@ -48,21 +48,19 @@ func main() {
 		PersistentPreRunE: server.PersistentPreRunEFn(ctx),
 	}
 
-	rootCmd.AddCommand(genutilcli.InitCmd(ctx, cdc, app.ModuleBasics, app.DefaultNodeHome))
-	rootCmd.AddCommand(genutilcli.CollectGenTxsCmd(ctx, cdc, bank.GenesisBalancesIterator{}, app.DefaultNodeHome))
-	rootCmd.AddCommand(genutilcli.MigrateGenesisCmd(ctx, cdc))
-	rootCmd.AddCommand(
+	rootCmd.AddCommand(genutilcli.InitCmd(ctx, cdc, app.ModuleBasics, app.DefaultNodeHome),
+		genutilcli.CollectGenTxsCmd(ctx, cdc, bank.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		genutilcli.MigrateGenesisCmd(ctx, cdc),
 		genutilcli.GenTxCmd(
 			ctx, cdc, app.ModuleBasics, staking.AppModuleBasic{},
 			bank.GenesisBalancesIterator{}, app.DefaultNodeHome, app.DefaultCLIHome,
 		),
-	)
-	rootCmd.AddCommand(genutilcli.ValidateGenesisCmd(ctx, cdc, app.ModuleBasics))
-	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, cdc, appCodec, app.DefaultNodeHome, app.DefaultCLIHome))
-	rootCmd.AddCommand(flags.NewCompletionCmd(rootCmd, true))
-	rootCmd.AddCommand(testnetCmd(ctx, cdc, app.ModuleBasics, bank.GenesisBalancesIterator{}))
-	rootCmd.AddCommand(replayCmd())
-	rootCmd.AddCommand(debug.Cmd(cdc))
+		genutilcli.ValidateGenesisCmd(ctx, cdc, app.ModuleBasics),
+		AddGenesisAccountCmd(ctx, cdc, appCodec, app.DefaultNodeHome, app.DefaultCLIHome),
+		flags.NewCompletionCmd(rootCmd, true),
+		testnetCmd(ctx, cdc, app.ModuleBasics, bank.GenesisBalancesIterator{}),
+		replayCmd(),
+		debug.Cmd(cdc))
 
 	server.AddCommands(ctx, cdc, rootCmd, newApp, exportAppStateAndTMValidators)
 
@@ -103,16 +101,18 @@ func exportAppStateAndTMValidators(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailWhiteList []string,
 ) (json.RawMessage, []tmtypes.GenesisValidator, error) {
 
+	var gapp *app.GaiaApp
 	if height != -1 {
-		gapp := app.NewGaiaApp(logger, db, traceStore, false, uint(1), map[int64]bool{}, "")
+		gapp = app.NewGaiaApp(logger, db, traceStore, false, uint(1), map[int64]bool{}, "")
 		err := gapp.LoadHeight(height)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		return gapp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
+	} else {
+		gapp = app.NewGaiaApp(logger, db, traceStore, true, uint(1), map[int64]bool{}, "")
 	}
 
-	gapp := app.NewGaiaApp(logger, db, traceStore, true, uint(1), map[int64]bool{}, "")
 	return gapp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
 }
